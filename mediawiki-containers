@@ -58,8 +58,20 @@ start () {
     docker run -d \
         --name=dnsdock \
         -v /var/run/docker.sock:/run/docker.sock \
+        -p 172.17.0.1:53:53/udp \
         tonistiigi/dnsdock
     DNS=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' dnsdock)
+
+    echoinfo "Starting nginx-proxy container.."
+    docker run -d \
+        --name=nginx-proxy \
+        -e SERVICE_NAME=nginx-proxy \
+        -v /var/run/docker.sock:/tmp/docker.sock:ro \
+        -v /srv/certs:/etc/nginx/certs:ro \
+        -p 80:80 \
+        -p 443:443 \
+        --dns "$DNS" \
+        jwilder/nginx-proxy
 
     echoinfo "Starting mysql(mariadb) container.."
     docker run -d \
@@ -80,6 +92,7 @@ start () {
         --name=mediawiki \
         -v `pwd`/conf/mediawiki:/conf:ro \
         -v $DATADIR/mediawiki:/data:rw \
+	-e VIRTUAL_HOST="$MEDIAWIKI_DOMAIN" \
         -e MEDIAWIKI_SITE_SERVER="//$MEDIAWIKI_DOMAIN" \
         -e MEDIAWIKI_SITE_NAME=MediaWiki \
         -e MEDIAWIKI_SITE_LANG=en \
@@ -91,7 +104,7 @@ start () {
         -e MEDIAWIKI_DB_PASSWORD=password \
         -e MEDIAWIKI_RESTBASE_URL=http://mediawiki-node-services.docker:7231/localhost/v1 \
         --dns "$DNS" \
-        -p 80:80 \
+        -p 8000:80 \
         wikimedia/mediawiki
 
     echoinfo "Starting mediawiki-node-services container.."
@@ -99,6 +112,7 @@ start () {
         --name=mediawiki-node-services \
         -v $DATADIR/node-services:/data \
         -e MEDIAWIKI_API_URL=http://mediawiki.docker/api.php \
+	-e VIRTUAL_HOST="mediawiki-node-services.docker" \
         --dns "$DNS" \
         wikimedia/mediawiki-node-services
 
@@ -110,6 +124,7 @@ start () {
 docker_pull() {
     docker pull tonistiigi/dnsdock
     docker pull mariadb
+    docker pull jwilder/nginx-proxy
     docker pull wikimedia/mediawiki
     docker pull wikimedia/mediawiki-node-services
 }
@@ -121,6 +136,7 @@ stop () {
     docker rm -f mediawiki 2>/dev/null || true
     docker rm -f mediawiki-node-services 2>/dev/null || true
     docker rm -f mysql 2>/dev/null || true
+    docker rm -f nginx-proxy 2>/dev/null || true
     docker rm -f dnsdock 2>/dev/null || true
 }
 

@@ -41,7 +41,7 @@ of an installer run.
 ## Architecture
 
 Running `sudo ./mediawiki-containers start` in a checkout of this repository will
-start four containers:
+start five containers:
 
 - An Apache/MediaWiki container with PHP 5.6 and MediaWiki 1.27-wmf9
     using [wikimedia/mediawiki](https://hub.docker.com/r/wikimedia/mediawiki/),
@@ -55,6 +55,8 @@ start four containers:
     currently running RESTBase and Parsoid in a single node process for memory
     efficiency.
 - A small DNS resolver for service discovery.
+- A nginx proxy service to handle http request and redirect to https 
+    [jwilder/nginx-proxy](https://hub.docker.com/r/jwilder/nginx-proxy/)
 
 After startup, a brand new MediaWiki install will be reachable at
 http://localhost/.
